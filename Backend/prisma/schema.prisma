@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id        String    @id @default(uuid()) @map("_id")
+  createdAt DateTime  @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid()) @map("_id")
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         Sender
+  text           String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+enum Sender {
+  USER
+  AI
+}

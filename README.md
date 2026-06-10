@@ -47,7 +47,7 @@ The API runs at `http://localhost:3000`.
 ### 3. Frontend
 
 ```bash
-cd ai-widget
+cd Frontend
 cp .env.example .env
 npm install
 npm run dev
@@ -179,7 +179,3 @@ src/
 ## License
 
 UNLICENSED — private project.
-# ai-customer-support-agent
-# ai-customer-support-agent
-# ai-customer-support-agent
-# ai-customer-support-agent

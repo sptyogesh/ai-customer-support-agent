@@ -1,184 +1,109 @@
-# AI Customer Support Chat Widget
+# Spur – Founding Full-Stack Engineer Take-Home
 
-A production-ready AI customer support chat application with a React frontend, NestJS backend, MongoDB database, and Google Gemini integration.
-
-## Project Structure
-
-```
-Frontend/                 # React + Vite frontend
-Backend/         # NestJS API server
-```
+A production-ready AI customer support chat application built for the Spur take-home assignment. This project features a React frontend, a NestJS backend, MongoDB for data persistence, and Google Gemini as the LLM provider.
 
 ## Features
 
-- Modern chat UI with user/AI message bubbles, timestamps, and auto-scroll
-- Session persistence via `localStorage` (survives page refresh)
-- Conversation history stored in MongoDB
-- Gemini-powered responses with seeded store knowledge (shipping, returns, refunds, support hours)
-- Input validation (empty messages, 2000 char limit)
-- Graceful error handling for API failures, rate limits, and timeouts
+- **Live Chat UI:** Modern interface with user/AI message distinction, timestamps, auto-scroll, and loading states.
+- **Session Persistence:** Conversations are persisted in MongoDB and restored on reload using `localStorage`.
+- **Gemini AI Integration:** Agent is seeded with domain knowledge (store policies) and generates contextual responses.
+- **Robustness:** Input validation (truncation, empty checks) and graceful error handling for API failures.
 
-## Prerequisites
+## Quick Start (Local Development)
+
+### Prerequisites
 
 - Node.js 18+
-- MongoDB (local or Atlas)
-- Google Gemini API key
+- MongoDB (local instance or MongoDB Atlas cluster)
+- Google Gemini API Key
 
-## Quick Start
+### 1. Database Setup
 
-### 1. Database
+Ensure you have a MongoDB connection string ready.
 
-Start MongoDB locally or use a MongoDB Atlas connection string.
-
-### 2. Backend
+### 2. Backend Setup
 
 ```bash
 cd Backend
 cp .env.example .env
-# Edit .env with your DATABASE_URL and GEMINI_API_KEY
-
-npm install
-npx prisma db push    # Apply schema to MongoDB
-npm run start:dev
 ```
 
-The API runs at `http://localhost:3000`.
+Edit `Backend/.env` with your variables:
+```env
+DATABASE_URL="mongodb+srv://..."
+GEMINI_API_KEY="your-gemini-api-key"
+PORT=3000
+CORS_ORIGIN="http://localhost:5173"
+```
 
-### 3. Frontend
+Install dependencies and sync the database schema:
+```bash
+npm install
+npx prisma db push
+npm run start:dev
+```
+The API will run at `http://localhost:3000`.
+
+### 3. Frontend Setup
 
 ```bash
 cd Frontend
 cp .env.example .env
+```
+
+Edit `Frontend/.env` (default settings should work):
+```env
+VITE_API_BASE_URL="http://localhost:3000"
+```
+
+Install dependencies and start the app:
+```bash
 npm install
 npm run dev
 ```
+The chat UI will be accessible at `http://localhost:5173`.
 
-The chat UI runs at `http://localhost:5173`.
+## Architecture Overview
 
-## Environment Variables
+This project uses a monorepo structure separating the **Backend (NestJS)** and **Frontend (React + Vite)**.
 
-### Backend (`Backend/.env`)
+### Backend Architecture
+The backend follows a modular, layered architecture to separate concerns:
+- **Controllers:** Handle HTTP requests and input validation (`ChatController`).
+- **Services:** Contain business logic (`ChatService`, `GeminiService`).
+- **Data Access:** Prisma ORM for type-safe database interactions (`PrismaModule`).
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | MongoDB connection string |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `GEMINI_MODEL` | Gemini model name (default: `gemini-2.5-flash`) |
-| `PORT` | Server port (default: 3000) |
-| `CORS_ORIGIN` | Frontend URL for CORS (default: http://localhost:5173) |
+**Design Decisions:**
+- **NestJS:** Chosen for its opinionated structure, dependency injection, and excellent TypeScript support.
+- **MongoDB + Prisma:** Used for schema-less flexibility with Prisma providing strong type safety.
+- **Stateless API:** Sessions are managed by the frontend passing a `sessionId`, allowing the backend to retrieve conversation history from the DB per request.
 
-### Frontend (`Frontend/.env`)
+### Frontend Architecture
+- **React + Vite:** For a fast, modern development experience.
+- **Component-Based:** Separated into `ChatWindow`, `ChatInput`, and `MessageBubble` for reusability.
+- **State Management:** React hooks manage conversation state and loading indicators. `localStorage` is used to persist the `sessionId`.
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_BASE_URL` | Backend API URL (default: http://localhost:3000) |
+## LLM Notes
 
-## API Reference
+**Provider:** Google Gemini (`gemini-2.5-flash`).
+*Chosen for its speed, generous free tier, and strong reasoning capabilities.*
 
-### POST `/chat/message`
+**Prompting Strategy:**
+The AI is instructed using a System Prompt to act as a helpful customer support agent.
+Domain knowledge (Shipping, Returns, Refunds, Support Hours) is injected directly into the system prompt to seed the agent with "facts".
+Conversation history (previous user and AI messages) is retrieved from the database and passed to the LLM to maintain context.
 
-Send a message and receive an AI reply.
+## Trade-offs & "If I had more time..."
 
-**Request:**
-```json
-{
-  "message": "What is your return policy?",
-  "sessionId": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
+**Trade-offs Made:**
+- **Database:** MongoDB was used instead of Postgres. While Postgres is standard, MongoDB allowed faster iteration for simple document storage without dealing with complex migrations.
+- **Auth:** Left out to keep the focus on the core chat functionality. Sessions are purely client-side UUIDs.
+- **Knowledge Base:** Hardcoded domain knowledge in the prompt instead of setting up a RAG (Retrieval-Augmented Generation) pipeline with vector embeddings due to the 8-12 hour time constraint.
 
-**Response:**
-```json
-{
-  "reply": "Returns are accepted within 30 days of delivery. The product must be unused.",
-  "sessionId": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
+**If I had more time, I would:**
+1. **Implement RAG:** Move domain knowledge into a vector database (like Pinecone or pgvector) and retrieve relevant context based on user queries, instead of stuffing the prompt.
+2. **Add Redis Caching:** Cache recent conversation histories and frequently asked questions to reduce DB hits and LLM latency.
+3. **Enhance UI/UX:** Add markdown rendering for AI responses, typing indicators, and a more polished design system (e.g., Tailwind CSS + shadcn/ui).
+4. **Testing:** Add comprehensive unit tests (Jest) and end-to-end testing (Cypress/Playwright).
+5. **Streaming:** Implement Server-Sent Events (SSE) to stream the LLM response chunk-by-chunk for a snappier user experience.
 
-### GET `/chat/history?sessionId={uuid}`
-
-Retrieve all messages for a conversation.
-
-**Response:**
-```json
-[
-  {
-    "id": "...",
-    "conversationId": "...",
-    "sender": "USER",
-    "text": "What is your return policy?",
-    "createdAt": "2026-06-09T12:00:00.000Z"
-  }
-]
-```
-
-## Database Schema
-
-- **Conversation** — `id` (UUID), `createdAt`
-- **Message** — `id` (UUID), `conversationId`, `sender` (USER | AI), `text`, `createdAt`
-
-Prisma schema lives at `Backend/prisma/schema.prisma`.
-
-```bash
-# Regenerate Prisma client after schema changes
-npm run prisma:generate
-
-# Push schema changes to MongoDB
-npm run prisma:push
-```
-
-## Production Build
-
-```bash
-# Backend
-cd Backend
-npm run build
-npm run start:prod
-
-# Frontend
-cd Frontend
-npm run build
-npm run preview
-```
-
-Serve the frontend `dist/` folder via any static host (Nginx, Vercel, S3, etc.) and point `VITE_API_BASE_URL` to your deployed API.
-
-## Architecture
-
-### Backend
-
-```
-src/
-├── chat/
-│   ├── chat.controller.ts
-│   ├── chat.service.ts
-│   ├── dto/
-│   └── entities/
-├── gemini/
-│   └── gemini.service.ts
-├── prisma/
-├── common/filters/
-└── main.ts
-```
-
-### Frontend
-
-```
-src/
-├── components/
-│   ├── ChatWindow.tsx
-│   ├── ChatInput.tsx
-│   └── MessageBubble.tsx
-├── services/
-│   └── chatApi.ts
-├── pages/
-│   └── ChatPage.tsx
-└── App.tsx
-```
-
-## License
-
-UNLICENSED — private project.
-# ai-customer-support-agent
-# ai-customer-support-agent
-# ai-customer-support-agent
